@@ -1,25 +1,25 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-    const [deployer] = await ethers.getSigners();
-    
-    console.log("Deploying contracts with the account:", deployer.address);
-    
-    // Correct way to get balance in ethers v6
-    const balance = await ethers.provider.getBalance(deployer.address);
-    console.log("Account balance:", ethers.formatEther(balance), "MATIC");
+  const [deployer] = await ethers.getSigners();
+  
+  console.log("Deploying with account:", deployer.address);
+  console.log("Balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)), "MATIC");
 
-    const CowAdoption = await ethers.getContractFactory("CowAdoption");
-    const cowAdoption = await CowAdoption.deploy();
-    
-    await cowAdoption.waitForDeployment();
+  // Initial rate: 1 ETH = 200,000 INR (stored as 200000 * 100)
+  const initialRate = 200000 * 100;
+  const CowAdoption = await ethers.getContractFactory("CowAdoption");
+  const cowAdoption = await CowAdoption.deploy(initialRate);
+  
+  await cowAdoption.waitForDeployment();
 
-    console.log("CowAdoption deployed to:", await cowAdoption.getAddress());
+  console.log("Contract deployed to:", await cowAdoption.getAddress());
+  console.log("Initial rate set to:", initialRate / 100, "INR per ETH");
 }
 
 main()
-    .then(() => process.exit(0))
-    .catch((error) => {
-        console.error(error);
-        process.exit(1);
-    });
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
