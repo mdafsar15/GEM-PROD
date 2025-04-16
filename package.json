@@ -1,32 +1,32 @@
 {
-  "name": "nft-project",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "hardhat test",
-    "deploy": "hardhat run scripts/deploy.js --network polygon_amoy"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "@nomicfoundation/hardhat-verify": "^2.0.13",
-    "@typechain/ethers-v6": "^0.5.1",
-    "@typechain/hardhat": "^9.1.0",
-    "dotenv": "^16.5.0",
-    "hardhat": "^2.22.19",
-    "hardhat-gas-reporter": "^1.0.10",
-    "solidity-coverage": "^0.8.14",
-    "typescript": "^5.8.2"
-  },
-  "dependencies": {
-    "@nomiclabs/hardhat-ethers": "npm:@nomicfoundation/hardhat-ethers@^3.0.8",
-    "@openzeppelin/contracts": "^4.9.3",
-    "@supabase/supabase-js": "^2.49.4",
-    "ethers": "^6.13.5",
-    "ipfs-http-client": "^56.0.3"
-  }
+	"name": "nft-project",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "hardhat test",
+		"deploy": "hardhat run scripts/deploy.js --network polygon_amoy"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@nomicfoundation/hardhat-network-helpers": "^1.0.12",
+		"@nomicfoundation/hardhat-toolbox": "^5.0.0",
+		"@nomicfoundation/hardhat-verify": "^2.0.13",
+		"@typechain/ethers-v6": "^0.5.1",
+		"@typechain/hardhat": "^9.1.0",
+		"dotenv": "^16.5.0",
+		"hardhat": "^2.22.19",
+		"hardhat-gas-reporter": "^1.0.10",
+		"solidity-coverage": "^0.8.14",
+		"typescript": "^5.8.2"
+	},
+	"dependencies": {
+		"@nomiclabs/hardhat-ethers": "npm:@nomicfoundation/hardhat-ethers@^3.0.8",
+		"@openzeppelin/contracts": "^4.9.3",
+		"@supabase/supabase-js": "^2.49.4",
+		"ethers": "^6.13.5",
+		"ipfs-http-client": "^56.0.3"
+	}
 }

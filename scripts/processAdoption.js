@@ -7,7 +7,8 @@ async function main() {
         console.log("Starting adoption process...");
         
         // 1. Get cow_id (from command line or default)
-        const cowId = process.argv[2] || "d9e5b8f0-6342-4e53-98d7-6a3273e4abf8";
+        const input = process.argv[2] || "2438739000000058020";
+        const cowId = input;
         console.log(`Processing adoption for cow: ${cowId}`);
 
         // 2. Get pending requests
@@ -45,7 +46,7 @@ async function main() {
         // 5. Connect to contract
         console.log("Connecting to smart contract...");
         const CowAdoption = await ethers.getContractFactory("CowAdoption");
-        const cowAdoption = await CowAdoption.attach("0x8A791620dd6260079BF849Dc5567aDC3F2FdC318");
+        const cowAdoption = await CowAdoption.attach("0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"); // <-- Replace with your contract address
 
         // 6. Calculate required ETH (convert price to paise and handle BigInt properly)
         const priceInPaise = BigInt(Math.round((request.price || 0) * 100));
@@ -70,11 +71,11 @@ async function main() {
         const tokenId = Number(nextTokenId) - 1;
         console.log(`Minted Token ID: ${tokenId}`);
 
-        // 9. Update Supabase (convert BigInt to Number)
+        // 9. Update Supabase (store transaction hash, not block number)
         console.log("Updating Supabase record...");
         const updatedRecord = await supabase.updateAdoptionRecord(
             request.id,
-            Number(receipt.blockNumber),
+            tx.hash, // <-- Store transaction hash here!
             tokenId,
             ipfsResult.httpUrl
         );
