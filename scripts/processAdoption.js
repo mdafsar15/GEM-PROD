@@ -5,16 +5,21 @@ const ipfs = require("../utils/ipfs");
 async function main() {
     try {
         console.log("Starting adoption process...");
-        
-        // 1. Get cow_id (from command line or default)
-        const input = process.argv[2] || "2438739000000058020";
-        const cowId = input;
+
+        if (!process.env.COW_ID) {
+            throw new Error("Please provide COW_ID as an environment variable");
+        }
+
+        const cowId = process.env.COW_ID;
         console.log(`Processing adoption for cow: ${cowId}`);
 
-        // 2. Get pending requests
+        // const input = process.argv[2];
+        // const cowId = input;
+        console.log(`Processing adoption for cow: ${cowId}`);
+
         console.log("Fetching pending requests from Supabase...");
         const pendingRequests = await supabase.getPendingRequests(cowId);
-        
+
         if (pendingRequests.length === 0) {
             console.log("No pending requests found for this cow");
             return;
@@ -23,12 +28,11 @@ async function main() {
         const request = pendingRequests[0];
         console.log(`Found request ID: ${request.id}`);
 
-        // 3. Prepare metadata
         console.log("Preparing metadata...");
         const metadata = {
             name: `Cow Adoption #${request.id}`,
             description: `Adoption certificate for cow ${cowId}`,
-            image: request.ipfsImages || "ipfs://default-image-hash",
+            image: request.ipfsimages || "ipfs://default-image-hash",
             attributes: [
                 { trait_type: "Cow ID", value: cowId },
                 { trait_type: "Adopter", value: request.full_name || "Unknown" },
@@ -37,23 +41,19 @@ async function main() {
             ]
         };
 
-        // 4. Upload to IPFS
         console.log("Uploading metadata to IPFS...");
         const ipfsResult = await ipfs.uploadMetadata(metadata);
         console.log(`IPFS Hash: ${ipfsResult.hash}`);
         console.log(`Access URL: ${ipfsResult.httpUrl}`);
 
-        // 5. Connect to contract
         console.log("Connecting to smart contract...");
         const CowAdoption = await ethers.getContractFactory("CowAdoption");
         const cowAdoption = await CowAdoption.attach("0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"); // <-- Replace with your contract address
 
-        // 6. Calculate required ETH (convert price to paise and handle BigInt properly)
         const priceInPaise = BigInt(Math.round((request.price || 0) * 100));
         const requiredEth = await cowAdoption.inrToEth(priceInPaise);
         console.log(`Required ETH: ${ethers.formatEther(requiredEth)}`);
 
-        // 7. Execute adoption
         console.log("Sending transaction...");
         const tx = await cowAdoption.approveAdoption(
             cowId,
@@ -61,27 +61,29 @@ async function main() {
             priceInPaise,
             { value: requiredEth }
         );
-        
+
         console.log(`Transaction hash: ${tx.hash}`);
         const receipt = await tx.wait();
         console.log(`Transaction confirmed in block: ${receipt.blockNumber}`);
 
-        // 8. Get token ID (handle BigInt conversion)
         const nextTokenId = await cowAdoption.getNextTokenId();
         const tokenId = Number(nextTokenId) - 1;
         console.log(`Minted Token ID: ${tokenId}`);
 
-        // 9. Update Supabase (store transaction hash, not block number)
         console.log("Updating Supabase record...");
         const updatedRecord = await supabase.updateAdoptionRecord(
             request.id,
-            tx.hash, // <-- Store transaction hash here!
+            tx.hash, 
             tokenId,
             ipfsResult.httpUrl
         );
-        
+
+        console.log("Inserting into gomini_ewallet...");
+        const walletRecord = await supabase.insertGominiWallet(updatedRecord);
+
         console.log("Process completed successfully!");
-        console.log("Updated record:", updatedRecord);
+        console.log("Updated adoption record:", updatedRecord);
+        console.log("Inserted wallet record:", walletRecord);
 
     } catch (error) {
         console.error("❌ Process failed:", error);

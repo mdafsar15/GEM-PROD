@@ -31,7 +31,35 @@ async function updateAdoptionRecord(id, transactionId, tokenId, ipfsUrl) {
     return data[0];
 }
 
+async function insertGominiWallet(adoptionRecord) {
+    console.log("Inserting wallet with data:", {
+        cow_id: adoptionRecord.cow_id,
+        ipfshashmetadata: adoptionRecord.ipfshashmetadata,
+        ipfsimages: adoptionRecord.ipfsimages,
+        blk_transaction_id: adoptionRecord.blk_transaction_id,
+        blk_nft_token: adoptionRecord.blk_nft_token
+    });
+
+    const { data, error } = await supabase
+        .from('gomini_ewallet')
+        .insert([{
+            cow_id: adoptionRecord.cow_id,
+            ipfshashmetadata: adoptionRecord.ipfshashmetadata,
+            ipfsimages: adoptionRecord.ipfsimages,
+            blk_transaction_id: adoptionRecord.blk_transaction_id,
+            blk_nft_token: adoptionRecord.blk_nft_token
+        }])
+        .select();
+
+    if (error) {
+        console.error("Error inserting into gomini_ewallet:", error);
+        throw error;
+    }
+    return data[0];
+}
+
 module.exports = {
     getPendingRequests,
-    updateAdoptionRecord
+    updateAdoptionRecord,
+    insertGominiWallet
 };
