@@ -11,7 +11,6 @@ async function main() {
         }
 
         const cowId = process.env.COW_ID;
-        console.log(`Processing adoption for cow: ${cowId}`);
 
         // const input = process.argv[2];
         // const cowId = input;
