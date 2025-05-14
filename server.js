@@ -2,7 +2,7 @@ const express = require('express');
 const { exec } = require('child_process');
 
 const app = express();
-const PORT = 3001; // Changed to 3001
+const PORT = 3000; // Changed to 3001
 
 app.get('/generateFullfillment', (req, res) => {
   const cowId = req.query.COW_ID;

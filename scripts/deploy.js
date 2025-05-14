@@ -5,8 +5,7 @@ async function main() {
   
   console.log("Deploying with account:", deployer.address);
   console.log("Balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)), "MATIC");
-
-  // Initial rate: 1 ETH = 200,000 INR (stored as 200000 * 100)
+  
   const initialRate = 200000 * 100;
   const CowAdoption = await ethers.getContractFactory("CowAdoption");
   const cowAdoption = await CowAdoption.deploy(initialRate);
