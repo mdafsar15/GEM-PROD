@@ -29,9 +29,9 @@ async function updateAdoptionRecord(id, transactionId, tokenId, ipfsUrl) {
 
     if (error) throw error;
 
-    // After successful adoption update, update ambassador wallet if referral code exists
-    if (data[0].referral_code) {
-        await updateAmbassadorWallet(data[0].referral_code);
+    // After successful adoption update, handle ambassador commission if referral code exists
+    if (data[0].referral_code && data[0].price) {
+        await handleAmbassadorCommission(data[0]);
     }
 
     return data[0];
@@ -56,13 +56,17 @@ async function insertGominiWallet(adoptionRecord) {
     return data[0];
 }
 
-async function updateAmbassadorWallet(referralCode) {
+async function handleAmbassadorCommission(adoptionRecord) {
     try {
+        if (!adoptionRecord.referral_code || !adoptionRecord.price) {
+            return null;
+        }
+
         // Get ambassador id using referral code
         const { data: ambassador, error: ambassadorError } = await supabase
             .from('ambassador')
             .select('id')
-            .eq('referral_code', referralCode)
+            .eq('referral_code', adoptionRecord.referral_code)
             .single();
 
         if (ambassadorError) {
@@ -71,31 +75,72 @@ async function updateAmbassadorWallet(referralCode) {
         }
 
         if (!ambassador) {
-            console.log(`No ambassador found for referral code: ${referralCode}`);
+            console.log(`No ambassador found for referral code: ${adoptionRecord.referral_code}`);
             return null;
         }
 
-        // Update the existing record in ambassador_wallet
-        const { data: wallet, error: walletError } = await supabase
+        // Calculate 5% commission
+        const price = Number(adoptionRecord.price);
+        const commission = price * 0.05;
+        
+        // Check if there's a pending record to update
+        const { data: existingWallet, error: existingError } = await supabase
             .from('ambassador_wallet')
-            .update({
-                amount: 2500,
-                status: 'credited'
-            })
+            .select('id')
             .eq('ambassador_id', ambassador.id)
             .eq('status', 'pending')
-            .select();
+            .maybeSingle();
 
-        if (walletError) {
-            console.error('Error updating ambassador wallet:', walletError);
-            throw walletError;
+        if (existingError) {
+            console.error('Error checking existing ambassador wallet:', existingError);
+            throw existingError;
         }
 
-        // console.log(`Successfully updated ambassador wallet for referral: ${referralCode}`);
-        return wallet[0];
+        let result;
+        
+        if (existingWallet) {
+            // Update existing record
+            const { data: updatedWallet, error: updateError } = await supabase
+                .from('ambassador_wallet')
+                .update({
+                    amount: commission,
+                    status: 'credited',
+                    description: `5% commission for adoption ${adoptionRecord.id}`
+                })
+                .eq('id', existingWallet.id)
+                .select();
+
+            if (updateError) {
+                console.error('Error updating ambassador wallet:', updateError);
+                throw updateError;
+            }
+            
+            result = updatedWallet[0];
+        } else {
+            // Create new record
+            const { data: newWallet, error: insertError } = await supabase
+                .from('ambassador_wallet')
+                .insert([{
+                    ambassador_id: ambassador.id,
+                    amount: commission,
+                    status: 'credited',
+                    description: `Referral by ${adoptionRecord.user_id}`
+                }])
+                .select();
+
+            if (insertError) {
+                console.error('Error inserting ambassador wallet:', insertError);
+                throw insertError;
+            }
+            
+            result = newWallet[0];
+        }
+
+        // console.log(`Successfully processed ${commission.toFixed(2)} INR commission for referral: ${adoptionRecord.referral_code}`);
+        return result;
 
     } catch (error) {
-        console.error('Error in updateAmbassadorWallet:', error);
+        console.error('Error in handleAmbassadorCommission:', error);
         throw error;
     }
 }
