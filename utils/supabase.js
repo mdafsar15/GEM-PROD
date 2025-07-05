@@ -38,22 +38,66 @@ async function updateAdoptionRecord(id, transactionId, tokenId, ipfsUrl) {
 }
 
 async function insertGominiWallet(adoptionRecord) {
-    const { data, error } = await supabase
-        .from('gomini_ewallet')
-        .insert([{
-            cow_id: adoptionRecord.cow_id,
-            ipfshashmetadata: adoptionRecord.ipfshashmetadata,
-            ipfsimages: adoptionRecord.ipfsimages,
-            blk_transaction_id: adoptionRecord.blk_transaction_id,
-            blk_nft_token: adoptionRecord.blk_nft_token
-        }])
-        .select();
+    try {
+        // First check if a record already exists for this cow_id
+        const { data: existingData, error: existingError } = await supabase
+            .from('gomini_ewallet')
+            .select('id')
+            .eq('cow_id', adoptionRecord.cow_id)
+            .maybeSingle();
 
-    if (error) {
-        console.error("Error inserting into gomini_ewallet:", error);
+        if (existingError) {
+            console.error("Error checking existing gomini_ewallet:", existingError);
+            throw existingError;
+        }
+
+        let result;
+
+        if (existingData) {
+            // Update existing record
+            const { data: updatedData, error: updateError } = await supabase
+                .from('gomini_ewallet')
+                .update({
+                    ipfshashmetadata: adoptionRecord.ipfshashmetadata,
+                    ipfsimages: adoptionRecord.ipfsimages,
+                    blk_transaction_id: adoptionRecord.blk_transaction_id,
+                    blk_nft_token: adoptionRecord.blk_nft_token
+                })
+                .eq('id', existingData.id)
+                .select();
+
+            if (updateError) {
+                console.error("Error updating gomini_ewallet:", updateError);
+                throw updateError;
+            }
+            
+            result = updatedData[0];
+        } else {
+            // Insert new record
+            const { data: newData, error: insertError } = await supabase
+                .from('gomini_ewallet')
+                .insert([{
+                    cow_id: adoptionRecord.cow_id,
+                    ipfshashmetadata: adoptionRecord.ipfshashmetadata,
+                    ipfsimages: adoptionRecord.ipfsimages,
+                    blk_transaction_id: adoptionRecord.blk_transaction_id,
+                    blk_nft_token: adoptionRecord.blk_nft_token
+                }])
+                .select();
+
+            if (insertError) {
+                console.error("Error inserting into gomini_ewallet:", insertError);
+                throw insertError;
+            }
+            
+            result = newData[0];
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Error in insertGominiWallet:", error);
         throw error;
     }
-    return data[0];
 }
 
 async function handleAmbassadorCommission(adoptionRecord) {
