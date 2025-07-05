@@ -4,30 +4,28 @@ const ipfs = require("../utils/ipfs");
 
 async function main() {
     try {
-        if (!process.env.COW_ID) {
-            throw new Error("Please provide COW_ID as an environment variable");
+        if (!process.env.ID) {
+            throw new Error("Please provide ID as an environment variable");
         }
 
-        const cowId = process.env.COW_ID;
-        const pendingRequests = await supabase.getPendingRequests(cowId);
+        const adoptionDetailId = process.env.ID;
+        const pendingRequest = await supabase.getPendingRequest(adoptionDetailId);
 
-        if (pendingRequests.length === 0) {
+        if (!pendingRequest) {
             console.log(JSON.stringify({
-                message: "No pending requests found for this cow"
+                message: "No pending request found for this adoption detail ID"
             }, null, 2));
             return;
         }
 
-        const request = pendingRequests[0];
-        
         const metadata = {
-            name: `Cow Adoption #${request.id}`,
-            description: `Adoption certificate for cow ${cowId}`,
-            image: request.ipfsimages || "ipfs://default-image-hash",
+            name: `Cow Adoption #${pendingRequest.id}`,
+            description: `Adoption certificate for adoption detail ID ${adoptionDetailId}`,
+            image: pendingRequest.ipfs_images || "ipfs://default-image-hash",
             attributes: [
-                { trait_type: "Cow ID", value: cowId },
-                { trait_type: "Adopter", value: request.user_id || "Unknown" },
-                { trait_type: "Price", value: `${request.price || 0} INR` },
+                { trait_type: "Adoption Detail ID", value: adoptionDetailId },
+                { trait_type: "Order ID", value: pendingRequest.order_id },
+                { trait_type: "Inventory ID", value: pendingRequest.inventory_id || "Unknown" },
                 { trait_type: "Date", value: new Date().toISOString() }
             ]
         };
@@ -35,15 +33,16 @@ async function main() {
         const ipfsResult = await ipfs.uploadMetadata(metadata);
         
         const CowAdoption = await ethers.getContractFactory("CowAdoption");
-        const cowAdoption = await CowAdoption.attach("0x8A791620dd6260079BF849Dc5567aDC3F2FdC318");
+        const cowAdoption = await CowAdoption.attach("0xa513E6E4b8f2a923D98304ec87F64353C4D5C853");
 
-        const priceInPaise = BigInt(Math.round((request.price || 0) * 100));
-        const requiredEth = await cowAdoption.inrToEth(priceInPaise);
+        // Using a default price since we don't have price in adoptions_details table
+        const defaultPriceInPaise = BigInt(100000); // 1000 INR as default
+        const requiredEth = await cowAdoption.inrToEth(defaultPriceInPaise);
 
         const tx = await cowAdoption.approveAdoption(
-            cowId,
+            adoptionDetailId, // Using adoption detail ID instead of cow ID
             ipfsResult.ipfsUrl,
-            priceInPaise,
+            defaultPriceInPaise,
             { value: requiredEth }
         );
 
@@ -51,27 +50,25 @@ async function main() {
         const nextTokenId = await cowAdoption.getNextTokenId();
         const tokenId = Number(nextTokenId) - 1;
 
-        const updatedRecord = await supabase.updateAdoptionRecord(
-            request.id,
+        const updatedRecord = await supabase.updateAdoptionDetailRecord(
+            adoptionDetailId,
             tx.hash, 
             tokenId,
             ipfsResult.httpUrl
         );
 
-        await supabase.insertGominiWallet(updatedRecord);
-
         // Format the final output
         const response = {
             message: "Adoption fulfillment created successfully",
-            adoption: {
+            adoption_detail: {
                 id: updatedRecord.id,
-                user_id: updatedRecord.user_id,
-                cow_id: updatedRecord.cow_id,
-                ipfshashmetadata: updatedRecord.ipfshashmetadata,
-                ipfsimages: updatedRecord.ipfsimages,
-                price: updatedRecord.price,
-                status: updatedRecord.status,
+                order_id: updatedRecord.order_id,
+                inventory_id: updatedRecord.inventory_id,
+                ipfs_hash_metadata: updatedRecord.ipfs_hash_metadata,
+                ipfs_images: updatedRecord.ipfs_images,
+                order_status: updatedRecord.order_status,
                 created_at: updatedRecord.created_at,
+                updated_at: updatedRecord.updated_at,
                 blk_transaction_id: updatedRecord.blk_transaction_id,
                 blk_nft_token: updatedRecord.blk_nft_token
             }
